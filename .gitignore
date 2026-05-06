@@ -1,0 +1,7 @@
+node_modules/
+.env
+data/production.json
+data/test-*.json
+uploads/
+coverage/
+backups/

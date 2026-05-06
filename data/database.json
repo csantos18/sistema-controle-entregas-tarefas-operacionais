@@ -1,0 +1,38 @@
+{
+  "settings": {
+    "companyName": "Controle de Entregas e Tarefas Operacionais",
+    "contactEmail": "operacao@empresa.com",
+    "primaryColor": "#16423c",
+    "accentColor": "#256f5b"
+  },
+  "demands": [
+    {
+      "id": 1,
+      "protocol": "OP-2026-0001",
+      "type": "entrega",
+      "title": "Entrega expressa para cliente prioritario",
+      "requester": "Loja Centro",
+      "contact": "operacao@lojacentro.com",
+      "category": "entrega",
+      "priority": "critica",
+      "status": "em_rota",
+      "assignee": "Equipe Logistica",
+      "origin": "CD Principal",
+      "destination": "Cliente Centro",
+      "description": "Cliente aguardando entrega com prazo critico.",
+      "dueAt": "2026-05-06T16:12:23.357Z",
+      "proof": "",
+      "notes": [
+        {
+          "visibility": "public",
+          "text": "Entrega saiu para rota.",
+          "createdAt": "2026-05-06T14:42:23.357Z"
+        }
+      ],
+      "createdAt": "2026-05-06T14:42:23.357Z",
+      "updatedAt": "2026-05-06T14:42:23.357Z",
+      "completedAt": ""
+    }
+  ],
+  "audit": []
+}

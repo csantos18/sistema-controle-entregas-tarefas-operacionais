@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sistema de Controle de Entregas e Tarefas Operacionais</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <strong>Sistema de Controle de Entregas e Tarefas Operacionais</strong>
+      <span>Entregas, coletas, rotas e tarefas em um unico painel.</span>
+    </div>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-menu">Menu</button>
+    <nav id="main-menu">
+      <a href="#registro">Registrar</a>
+      <a href="#consulta">Consultar</a>
+      <a href="#painel">Painel</a>
+      <a href="/comercial.html">Comercial</a>
+      <a href="/docs.html">Docs</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Operacao sob controle</p>
+        <h1>Sistema de Controle de Entregas e Tarefas Operacionais</h1>
+        <p>Registre demandas, acompanhe responsaveis, priorize ocorrencias, controle prazos e mantenha historico operacional sem depender de mensagens soltas.</p>
+        <div class="hero-actions">
+          <a class="button" href="#registro">Nova demanda</a>
+          <a class="button secondary" href="#painel">Abrir painel</a>
+        </div>
+      </div>
+      <aside class="hero-board" aria-label="Resumo operacional">
+        <div><span>Hoje</span><strong id="hero-open">0</strong><small>demandas abertas</small></div>
+        <div><span>Criticas</span><strong id="hero-critical">0</strong><small>prioridade maxima</small></div>
+        <div><span>Vencidas</span><strong id="hero-overdue">0</strong><small>precisam de acao</small></div>
+      </aside>
+    </section>
+
+    <section class="grid" id="registro">
+      <form class="panel" id="demand-form">
+        <div class="section-title">
+          <p class="eyebrow">Registro publico</p>
+          <h2>Nova demanda operacional</h2>
+        </div>
+        <label>Tipo
+          <select name="type" required>
+            <option value="entrega">Entrega</option>
+            <option value="coleta">Coleta</option>
+            <option value="tarefa">Tarefa operacional</option>
+          </select>
+        </label>
+        <label>Titulo
+          <input name="title" placeholder="Ex.: Reentrega urgente no Centro" required>
+        </label>
+        <div class="two">
+          <label>Solicitante
+            <input name="requester" placeholder="Cliente, loja ou setor" required>
+          </label>
+          <label>Contato
+            <input name="contact" placeholder="email ou WhatsApp" required>
+          </label>
+        </div>
+        <div class="two">
+          <label>Origem
+            <input name="origin" placeholder="CD, loja, fornecedor">
+          </label>
+          <label>Destino
+            <input name="destination" placeholder="Cliente, rota, setor">
+          </label>
+        </div>
+        <label>Categoria
+          <select name="category">
+            <option value="">Detectar automaticamente</option>
+            <option value="entrega">Entrega</option>
+            <option value="coleta">Coleta</option>
+            <option value="rota">Rota</option>
+            <option value="estoque">Estoque</option>
+            <option value="manutencao">Manutencao</option>
+            <option value="administrativo">Administrativo</option>
+          </select>
+        </label>
+        <label>Prazo desejado
+          <input name="dueAt" type="datetime-local">
+        </label>
+        <label>Descricao
+          <textarea name="description" rows="5" placeholder="Descreva o que precisa ser entregue, coletado, ajustado ou acompanhado." required></textarea>
+        </label>
+        <div class="suggestion" id="suggestion">A prioridade e a categoria sugeridas aparecem aqui.</div>
+        <button type="submit">Registrar demanda</button>
+        <p class="message" id="form-message"></p>
+      </form>
+
+      <section class="panel" id="consulta">
+        <div class="section-title">
+          <p class="eyebrow">Acompanhamento</p>
+          <h2>Consultar protocolo</h2>
+        </div>
+        <form id="lookup-form">
+          <label>Protocolo
+            <input name="protocol" placeholder="OP-2026-0001" required>
+          </label>
+          <label>Contato usado no registro
+            <input name="contact" placeholder="email ou WhatsApp" required>
+          </label>
+          <button type="submit">Consultar</button>
+        </form>
+        <div class="lookup-result" id="lookup-result"></div>
+      </section>
+    </section>
+
+    <section class="panel admin-login" id="painel">
+      <div class="section-title">
+        <p class="eyebrow">Painel operacional</p>
+        <h2>Entrar como administrador</h2>
+      </div>
+      <form id="login-form" class="login-line">
+        <input name="user" placeholder="usuario" autocomplete="username" required>
+        <input name="password" type="password" placeholder="senha" autocomplete="current-password" required>
+        <button type="submit">Entrar</button>
+      </form>
+      <p class="hint">Demo local: usuario <strong>admin</strong>, senha <strong>admin123</strong>. Em producao, use senha com hash no ambiente.</p>
+      <p class="message" id="login-message"></p>
+    </section>
+
+    <section class="admin-area hidden" id="admin-area">
+      <section class="metrics" id="metrics"></section>
+      <section class="panel filters">
+        <input id="search" placeholder="Buscar por protocolo, cliente, titulo, responsavel">
+        <select id="status-filter">
+          <option value="">Todos os status</option>
+          <option value="novo">Novo</option>
+          <option value="em_separacao">Em separacao</option>
+          <option value="aguardando_coleta">Aguardando coleta</option>
+          <option value="em_rota">Em rota</option>
+          <option value="entregue">Entregue</option>
+          <option value="falha_entrega">Falha na entrega</option>
+          <option value="reentrega">Reentrega</option>
+          <option value="cancelado">Cancelado</option>
+        </select>
+        <select id="priority-filter">
+          <option value="">Todas as prioridades</option>
+          <option value="critica">Critica</option>
+          <option value="alta">Alta</option>
+          <option value="media">Media</option>
+          <option value="baixa">Baixa</option>
+        </select>
+        <select id="category-filter">
+          <option value="">Todas as categorias</option>
+          <option value="entrega">Entrega</option>
+          <option value="coleta">Coleta</option>
+          <option value="rota">Rota</option>
+          <option value="estoque">Estoque</option>
+          <option value="manutencao">Manutencao</option>
+          <option value="administrativo">Administrativo</option>
+        </select>
+        <button type="button" id="demo-seed">Criar demo</button>
+        <a class="button secondary" href="/api/report.pdf" target="_blank">Relatorio PDF</a>
+        <a class="button secondary" href="/api/export.csv">Exportar CSV</a>
+        <button type="button" id="logout">Sair</button>
+      </section>
+      <section class="charts">
+        <div class="panel"><h2>Status</h2><div class="chart-bars" id="status-chart"></div></div>
+        <div class="panel"><h2>Prioridade</h2><div class="chart-bars" id="priority-chart"></div></div>
+        <div class="panel"><h2>Categoria</h2><div class="chart-bars" id="category-chart"></div></div>
+      </section>
+      <section class="panel settings-panel">
+        <div class="section-title">
+          <p class="eyebrow">Configuracao do cliente</p>
+          <h2>Tema visual e SLA</h2>
+        </div>
+        <form id="settings-form" class="settings-form">
+          <input name="companyName" placeholder="Nome da empresa">
+          <input name="contactEmail" placeholder="E-mail de contato">
+          <input name="primaryColor" type="color" value="#16423c" title="Cor principal">
+          <input name="accentColor" type="color" value="#256f5b" title="Cor de acao">
+          <input name="slaCritica" type="number" min="1" max="720" placeholder="SLA critica h">
+          <input name="slaAlta" type="number" min="1" max="720" placeholder="SLA alta h">
+          <input name="slaMedia" type="number" min="1" max="720" placeholder="SLA media h">
+          <input name="slaBaixa" type="number" min="1" max="720" placeholder="SLA baixa h">
+          <button type="submit">Salvar</button>
+        </form>
+        <p class="message" id="settings-message"></p>
+      </section>
+      <section class="kanban" id="kanban"></section>
+      <section class="panel">
+        <div class="section-title">
+          <p class="eyebrow">Auditoria</p>
+          <h2>Ultimas acoes</h2>
+        </div>
+        <div id="audit"></div>
+      </section>
+    </section>
+
+    <dialog class="detail-dialog" id="detail-dialog">
+      <div class="dialog-header">
+        <h2 id="detail-title">Detalhes da demanda</h2>
+        <button type="button" id="detail-close">Fechar</button>
+      </div>
+      <div id="detail-body"></div>
+    </dialog>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

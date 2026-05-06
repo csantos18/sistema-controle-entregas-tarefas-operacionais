@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Documentacao - Sistema de Controle de Entregas e Tarefas Operacionais</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <strong>Documentacao do Sistema</strong>
+      <span>Produto, API, deploy, LGPD e operacao.</span>
+    </div>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-menu">Menu</button>
+    <nav id="main-menu"><a href="/">Voltar ao sistema</a></nav>
+  </header>
+  <main>
+    <section class="hero docs-hero">
+      <div>
+        <p class="eyebrow">Entrega completa</p>
+        <h1>Sistema de Controle de Entregas e Tarefas Operacionais</h1>
+        <p>Esta pagina resume as rotas principais e aponta para os documentos formais que acompanham o projeto.</p>
+      </div>
+    </section>
+    <section class="grid docs-grid">
+      <article class="panel"><h2>Publico</h2><p><code>POST /api/demands</code></p><p><code>GET /api/public/demands/:protocol</code></p><p><code>POST /api/suggest</code></p></article>
+      <article class="panel"><h2>Administrativo</h2><p><code>GET /api/demands</code></p><p><code>PATCH /api/demands/:id/status</code></p><p><code>POST /api/demands/:id/notes</code></p></article>
+      <article class="panel"><h2>Gestao</h2><p><code>GET /api/dashboard</code></p><p><code>GET /api/export.csv</code></p><p><code>GET /api/backup</code></p></article>
+      <article class="panel"><h2>Seguranca</h2><p><code>POST /api/session</code></p><p><code>DELETE /api/session</code></p><p><code>GET /api/audit</code></p></article>
+    </section>
+  </main>
+  <script>
+    const menuToggle = document.querySelector(".menu-toggle");
+    const mainMenu = document.querySelector("#main-menu");
+    if (menuToggle && mainMenu) {
+      menuToggle.addEventListener("click", () => {
+        const expanded = menuToggle.getAttribute("aria-expanded") === "true";
+        menuToggle.setAttribute("aria-expanded", String(!expanded));
+        mainMenu.classList.toggle("is-open", !expanded);
+      });
+    }
+  </script>
+</body>
+</html>

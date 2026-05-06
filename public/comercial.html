@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Comercial - Sistema de Controle de Entregas e Tarefas Operacionais</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <strong>Sistema de Controle de Entregas e Tarefas Operacionais</strong>
+      <span>Proposta para empresas que precisam enxergar e controlar a rotina.</span>
+    </div>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-menu">Menu</button>
+    <nav id="main-menu"><a href="/">Sistema</a><a href="/docs.html">Docs</a></nav>
+  </header>
+  <main>
+    <section class="hero docs-hero">
+      <div>
+        <p class="eyebrow">Produto operacional</p>
+        <h1>Menos atraso, menos conversa perdida, mais controle de entrega.</h1>
+        <p>Centralize entregas, coletas, rotas e tarefas em um painel com prioridade, responsavel, prazo, comprovantes, historico e relatorios.</p>
+      </div>
+    </section>
+    <section class="grid docs-grid">
+      <article class="panel"><h2>Dor</h2><p>Demandas espalhadas em WhatsApp e planilhas tornam dificil saber quem deve agir, qual prazo venceu e o que ja foi resolvido.</p></article>
+      <article class="panel"><h2>Solução</h2><p>Formulario publico, protocolo, painel kanban, gráficos, SLA, rota textual, anexos, auditoria, CSV e relatorio PDF.</p></article>
+      <article class="panel"><h2>Implantacao</h2><p>Configuracao visual, categorias, prazos, equipe, dominio, HTTPS, ambiente de producao e treinamento rapido.</p></article>
+      <article class="panel"><h2>Evolucao</h2><p>PostgreSQL, WhatsApp, mapa real, ERP, comprovante assinado, multiempresa e aplicativo mobile.</p></article>
+    </section>
+    <section class="metrics">
+      <div class="metric"><strong>2-5</strong><span>dias para implantacao inicial</span></div>
+      <div class="metric"><strong>100%</strong><span>rotina rastreavel</span></div>
+      <div class="metric"><strong>PDF</strong><span>relatorios gerenciais</span></div>
+      <div class="metric"><strong>LGPD</strong><span>base documental inclusa</span></div>
+    </section>
+  </main>
+  <script>
+    const menuToggle = document.querySelector(".menu-toggle");
+    const mainMenu = document.querySelector("#main-menu");
+    if (menuToggle && mainMenu) menuToggle.addEventListener("click", () => mainMenu.classList.toggle("is-open"));
+  </script>
+</body>
+</html>
