@@ -6,11 +6,15 @@ const multer = require("multer");
 const nodemailer = require("nodemailer");
 
 const PORT = Number(process.env.PORT || 3000);
-const DATA_FILE = path.resolve(process.env.DATA_FILE || path.join(__dirname, "data", "database.json"));
-const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || path.join(__dirname, "uploads"));
+const IS_SERVERLESS_PREVIEW = Boolean(process.env.VERCEL);
+const IS_PRODUCTION = process.env.NODE_ENV === "production" || IS_SERVERLESS_PREVIEW;
+const DEFAULT_DATA_FILE = IS_SERVERLESS_PREVIEW ? path.join("/tmp", "controle-entregas-tarefas.json") : path.join(__dirname, "data", "database.json");
+const DEFAULT_UPLOAD_DIR = IS_SERVERLESS_PREVIEW ? path.join("/tmp", "controle-entregas-uploads") : path.join(__dirname, "uploads");
+const DATA_FILE = path.resolve(process.env.DATA_FILE || DEFAULT_DATA_FILE);
+const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || DEFAULT_UPLOAD_DIR);
 const SESSION_SECRET = process.env.SESSION_SECRET || "dev-secret-change-me";
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || sha256("admin123");
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || (IS_PRODUCTION ? "" : sha256("admin123"));
 const NOTIFICATION_WEBHOOK_URL = process.env.NOTIFICATION_WEBHOOK_URL || "";
 const SMTP_HOST = process.env.SMTP_HOST || "";
 const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
@@ -93,6 +97,13 @@ function makeSessionFor(admin) {
   const payload = JSON.stringify({ user: admin.user, role: admin.role, issuedAt: Date.now() });
   const encoded = Buffer.from(payload).toString("base64url");
   return `${encoded}.${sign(encoded)}`;
+}
+
+function sessionCookie(value, maxAge = null) {
+  const attrs = [`ops_session=${encodeURIComponent(value)}`, "HttpOnly", "SameSite=Lax", "Path=/"];
+  if (IS_PRODUCTION) attrs.push("Secure");
+  if (maxAge !== null) attrs.push(`Max-Age=${maxAge}`);
+  return attrs.join("; ");
 }
 
 function currentAdmin(req) {
@@ -420,19 +431,26 @@ function createApp() {
   app.use(express.static(path.join(__dirname, "public")));
   app.use("/uploads", requirePermission("read"), express.static(UPLOAD_DIR));
 
-  app.get("/api/health", (req, res) => res.json({ status: "ok", product: "controle-entregas-tarefas", storage: "json" }));
+  app.get("/api/health", (req, res) => res.json({
+    status: "ok",
+    product: "controle-entregas-tarefas",
+    storage: "json",
+    mode: IS_SERVERLESS_PREVIEW ? "serverless-preview" : "node",
+    persistence: IS_SERVERLESS_PREVIEW ? "temporary" : "filesystem",
+    adminConfigured: Boolean(ADMIN_PASSWORD_HASH),
+  }));
 
   app.post("/api/session", (req, res) => {
     const { user, password } = req.body || {};
     const db = readDb();
     const admin = findAdmin(db, user);
     if (!admin || admin.active === false || sha256(password || "") !== admin.passwordHash) return res.status(401).json({ error: "Credenciais invalidas." });
-    res.setHeader("Set-Cookie", `ops_session=${encodeURIComponent(makeSessionFor(admin))}; HttpOnly; SameSite=Lax; Path=/`);
+    res.setHeader("Set-Cookie", sessionCookie(makeSessionFor(admin)));
     res.json({ ok: true, user: admin.user, role: admin.role });
   });
 
   app.delete("/api/session", (req, res) => {
-    res.setHeader("Set-Cookie", "ops_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0");
+    res.setHeader("Set-Cookie", sessionCookie("", 0));
     res.json({ ok: true });
   });
 

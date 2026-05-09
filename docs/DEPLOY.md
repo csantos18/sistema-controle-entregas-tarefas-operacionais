@@ -1,5 +1,20 @@
 # Guia De Deploy
 
+## Vercel Preview
+
+O projeto inclui `vercel.json` e `api/index.js` para abrir um preview online rapido na Vercel.
+
+Variaveis obrigatorias:
+
+- `NODE_ENV=production`
+- `SESSION_SECRET`
+- `ADMIN_USER`
+- `ADMIN_PASSWORD_HASH`
+
+No ambiente serverless da Vercel, quando `DATA_FILE` nao for definido, o app usa `/tmp/controle-entregas-tarefas.json`. Esse modo e adequado para demonstracao de portfolio, mas a persistencia e temporaria.
+
+Para uso real com dados persistentes, prefira Render com disco persistente ou PostgreSQL.
+
 ## Render
 
 1. Criar novo Web Service.

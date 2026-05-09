@@ -84,6 +84,7 @@ npm run screenshots
 - Nodemailer e webhook: notificações externas opcionais.
 - Playwright: geração de screenshots e validação visual.
 - Render: configuração preservada em `render.yaml` para deploy com disco persistente.
+- Vercel: preview serverless preparado para demonstração de portfólio, com persistência temporária em `/tmp`.
 
 ## Stack
 
@@ -95,7 +96,7 @@ npm run screenshots
 | Uploads | Multer |
 | Notificações | Webhook, SMTP/Nodemailer |
 | Testes e qualidade | Node Test Runner, `node --check`, Playwright |
-| Deploy | Render, disco persistente, variáveis de ambiente |
+| Deploy | Render, Vercel Preview, disco persistente, variáveis de ambiente |
 
 ## Como Rodar Localmente
 
@@ -152,6 +153,14 @@ Para gerar o hash da senha:
 ```bash
 node -e "console.log(require('crypto').createHash('sha256').update('sua-senha').digest('hex'))"
 ```
+
+## Preview Online
+
+O projeto está preparado para preview na Vercel usando `vercel.json` e `api/index.js`.
+
+No preview serverless, o app usa arquivo temporário em `/tmp`. Isso é suficiente para demonstração visual e navegação do portfólio, mas não deve ser tratado como produção definitiva porque os dados podem ser reiniciados pela plataforma.
+
+Para produção com persistência real, use Render com disco persistente ou PostgreSQL conforme `docs/DEPLOY.md`.
 
 ## Qualidade e Testes
 
