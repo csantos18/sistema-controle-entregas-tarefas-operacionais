@@ -20,11 +20,12 @@ Para uso real com dados persistentes, prefira Render com disco persistente ou Po
 1. Criar novo Web Service.
 2. Apontar para este repositorio.
 3. Usar `render.yaml` ou configurar manualmente.
-4. Criar disco persistente em `/var/data`.
-5. Definir `DATA_FILE=/var/data/production.json`.
-6. Definir `UPLOAD_DIR=/var/data/uploads-production`.
-7. Definir `SESSION_SECRET` com valor seguro.
-8. Gerar hash da senha e configurar `ADMIN_PASSWORD_HASH`.
+4. Escolher persistencia:
+   - JSON com disco persistente: criar disco em `/var/data` e definir `DATA_FILE=/var/data/production.json`.
+   - PostgreSQL: criar banco gerenciado e definir `DATABASE_URL`.
+5. Definir `UPLOAD_DIR=/var/data/uploads-production` quando usar disco persistente para anexos.
+6. Definir `SESSION_SECRET` com valor seguro.
+7. Gerar hash da senha e configurar `ADMIN_PASSWORD_HASH`.
 
 ## Dominio, HTTPS e Ambientes
 
@@ -60,7 +61,9 @@ Quando `DATABASE_URL` estiver configurado, rode:
 npm run db:migrate
 ```
 
-O arquivo `migrations/001_init.sql` cria tabelas, historico confiavel e indices de busca. A aplicacao ainda mantem JSON como fallback local para demo e homologacao simples.
+Com `DATABASE_URL` definido, a aplicacao ativa PostgreSQL automaticamente. A migration `002_app_state.sql` cria a tabela `app_state`, usada pela API para persistir configuracoes, usuarios, demandas, anexos e auditoria em JSONB transacional. O arquivo `migrations/001_init.sql` documenta o schema relacional evolutivo para uma futura separacao total por tabelas.
+
+Sem `DATABASE_URL`, a aplicacao usa JSON local como fallback para desenvolvimento, demo e homologacao simples.
 
 ## Backup Automatico
 
@@ -85,11 +88,12 @@ Em producao PostgreSQL, use backup gerenciado do provedor e retencao diaria.
 - `NOTIFICATION_WEBHOOK_URL`: webhook opcional.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`: envio de e-mail.
 - `NOTIFICATION_EMAIL_TO`: destinatario dos alertas.
-- `DATABASE_URL`: conexao PostgreSQL para migrations.
+- `DATABASE_URL`: conexao PostgreSQL; quando configurada, ativa persistencia PostgreSQL na API.
 
 ## Validacao Pos-Deploy
 
 - Abrir `/api/health`.
+- Confirmar `storage=postgres` e `persistence=postgres` quando `DATABASE_URL` estiver ativo.
 - Confirmar `security.sessionSecretConfigured=true`.
 - Confirmar que o workflow `CI` passou no GitHub Actions.
 - Registrar uma demanda teste.

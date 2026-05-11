@@ -1,6 +1,6 @@
 {
   "name": "controle-entregas-tarefas",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Sistema de Controle de Entregas e Tarefas Operacionais com painel, API, regras de prazo, LGPD e documentacao de producao.",
   "main": "server.js",
   "type": "commonjs",

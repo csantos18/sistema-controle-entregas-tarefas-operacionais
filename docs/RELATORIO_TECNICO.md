@@ -2,7 +2,7 @@
 
 ## Arquitetura
 
-Aplicacao Node.js com Express, front-end estatico em HTML/CSS/JavaScript e persistencia em arquivo JSON. A estrutura foi escolhida para ser simples de implantar, facil de demonstrar e preparada para evoluir para banco relacional.
+Aplicacao Node.js com Express, front-end estatico em HTML/CSS/JavaScript e persistencia flexivel. Em desenvolvimento usa JSON local; em producao pode usar PostgreSQL automaticamente quando `DATABASE_URL` estiver configurado.
 
 ## Componentes
 
@@ -55,9 +55,9 @@ O CSS usa tres faixas principais:
 
 ## Persistencia
 
-O arquivo `data/database.json` guarda configuracoes, demandas e auditoria. Em producao, a variavel `DATA_FILE` deve apontar para disco persistente.
+O arquivo `data/database.json` guarda configuracoes, demandas e auditoria no modo local. Em producao com JSON, a variavel `DATA_FILE` deve apontar para disco persistente.
 
-Para evolucao robusta, o projeto inclui `migrations/001_init.sql` e `scripts/migrate-postgres.js`. O schema PostgreSQL possui tabelas separadas para usuarios, demandas, notas, anexos, historico, auditoria e configuracoes, alem de indices para status, categoria, prioridade, responsavel, prazo e busca textual.
+Quando `DATABASE_URL` existe, a API usa PostgreSQL. A tabela `app_state` em JSONB preserva o comportamento atual da aplicacao e entrega persistencia real para configuracoes, usuarios, demandas, anexos e auditoria. O projeto tambem inclui `migrations/001_init.sql` como desenho relacional evolutivo, com tabelas separadas para usuarios, demandas, notas, anexos, historico, auditoria e configuracoes.
 
 ## Rotas
 
@@ -65,6 +65,6 @@ As rotas principais estao descritas no README e na tela `/docs.html`.
 
 ## Limites Conhecidos
 
-- JSON e adequado para desenvolvimento, demonstracao e homologacao simples; para uso com alto volume, a evolucao recomendada e PostgreSQL.
+- JSON e adequado para desenvolvimento, demonstracao e homologacao simples; para producao, a recomendacao e ativar PostgreSQL com `DATABASE_URL`.
 - Nao ha rastreamento GPS nativo.
 - Upload real esta disponivel em disco local; para alto volume, recomenda-se storage externo.

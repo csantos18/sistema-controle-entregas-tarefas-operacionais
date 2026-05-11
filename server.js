@@ -4,6 +4,7 @@ const path = require("path");
 const express = require("express");
 const multer = require("multer");
 const nodemailer = require("nodemailer");
+const { Pool } = require("pg");
 
 const PORT = Number(process.env.PORT || 3000);
 const IS_SERVERLESS_PREVIEW = Boolean(process.env.VERCEL);
@@ -12,6 +13,8 @@ const DEFAULT_DATA_FILE = IS_SERVERLESS_PREVIEW ? path.join("/tmp", "controle-en
 const DEFAULT_UPLOAD_DIR = IS_SERVERLESS_PREVIEW ? path.join("/tmp", "controle-entregas-uploads") : path.join(__dirname, "uploads");
 const DATA_FILE = path.resolve(process.env.DATA_FILE || DEFAULT_DATA_FILE);
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || DEFAULT_UPLOAD_DIR);
+const DATABASE_URL = process.env.DATABASE_URL || "";
+const STORAGE_DRIVER = DATABASE_URL ? "postgres" : "json";
 const SESSION_SECRET = process.env.SESSION_SECRET || "dev-secret-change-me";
 const SESSION_MAX_AGE_MS = Number(process.env.SESSION_MAX_AGE_MS || 8 * 60 * 60 * 1000);
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
@@ -164,14 +167,18 @@ function requireAdmin(req, res, next) {
 }
 
 function requirePermission(permission) {
-  return (req, res, next) => {
-    const sessionAdmin = currentAdmin(req);
-    if (!sessionAdmin) return res.status(401).json({ error: "Acesso administrativo necessario." });
-    const dbAdmin = findAdmin(readDb(), sessionAdmin.user);
-    if (!dbAdmin || dbAdmin.active === false) return res.status(401).json({ error: "Sessao administrativa invalida ou usuario bloqueado." });
-    if (!ROLE_PERMISSIONS[dbAdmin.role]?.includes(permission)) return res.status(403).json({ error: "Permissao insuficiente." });
-    req.admin = { user: dbAdmin.user, role: dbAdmin.role, id: dbAdmin.id };
-    next();
+  return async (req, res, next) => {
+    try {
+      const sessionAdmin = currentAdmin(req);
+      if (!sessionAdmin) return res.status(401).json({ error: "Acesso administrativo necessario." });
+      const dbAdmin = findAdmin(await readDb(), sessionAdmin.user);
+      if (!dbAdmin || dbAdmin.active === false) return res.status(401).json({ error: "Sessao administrativa invalida ou usuario bloqueado." });
+      if (!ROLE_PERMISSIONS[dbAdmin.role]?.includes(permission)) return res.status(403).json({ error: "Permissao insuficiente." });
+      req.admin = { user: dbAdmin.user, role: dbAdmin.role, id: dbAdmin.id };
+      next();
+    } catch (error) {
+      next(error);
+    }
   };
 }
 
@@ -223,6 +230,10 @@ function createRateLimiter({ windowMs = 60_000, max = 120 } = {}) {
   };
 }
 
+function asyncRoute(handler) {
+  return (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
+}
+
 function defaultDb() {
   return {
     settings: {
@@ -271,15 +282,67 @@ function ensureDataFile() {
   if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, JSON.stringify(defaultDb(), null, 2));
 }
 
-function readDb() {
+function readJsonDb() {
   ensureDataFile();
   const db = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
   return normalizeDb(db);
 }
 
-function writeDb(db) {
+function writeJsonDb(db) {
   normalizeDb(db);
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
+}
+
+let pgPool;
+async function getPgPool() {
+  if (!pgPool) {
+    pgPool = new Pool({ connectionString: DATABASE_URL });
+  }
+  return pgPool;
+}
+
+async function ensurePostgresState() {
+  const pool = await getPgPool();
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_state (
+      key TEXT PRIMARY KEY,
+      value JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(
+    "INSERT INTO app_state (key, value) VALUES ($1, $2::jsonb) ON CONFLICT (key) DO NOTHING",
+    ["default", JSON.stringify(defaultDb())],
+  );
+}
+
+async function readPostgresDb() {
+  await ensurePostgresState();
+  const pool = await getPgPool();
+  const result = await pool.query("SELECT value FROM app_state WHERE key = $1", ["default"]);
+  return normalizeDb(result.rows[0]?.value || defaultDb());
+}
+
+async function writePostgresDb(db) {
+  normalizeDb(db);
+  await ensurePostgresState();
+  const pool = await getPgPool();
+  await pool.query(
+    "UPDATE app_state SET value = $2::jsonb, updated_at = now() WHERE key = $1",
+    ["default", JSON.stringify(db)],
+  );
+}
+
+async function readDb() {
+  return STORAGE_DRIVER === "postgres" ? readPostgresDb() : readJsonDb();
+}
+
+async function writeDb(db) {
+  if (STORAGE_DRIVER === "postgres") {
+    await writePostgresDb(db);
+    return;
+  }
+  writeJsonDb(db);
 }
 
 function normalizeDb(db) {
@@ -518,9 +581,9 @@ function createApp() {
   app.get("/api/health", (req, res) => res.json({
     status: "ok",
     product: "controle-entregas-tarefas",
-    storage: "json",
+    storage: STORAGE_DRIVER,
     mode: IS_SERVERLESS_PREVIEW ? "serverless-preview" : "node",
-    persistence: IS_SERVERLESS_PREVIEW ? "temporary" : "filesystem",
+    persistence: STORAGE_DRIVER === "postgres" ? "postgres" : (IS_SERVERLESS_PREVIEW ? "temporary" : "filesystem"),
     adminConfigured: Boolean(ADMIN_PASSWORD_HASH),
     security: {
       production: IS_PRODUCTION,
@@ -529,14 +592,14 @@ function createApp() {
     },
   }));
 
-  app.post("/api/session", (req, res) => {
+  app.post("/api/session", asyncRoute(async (req, res) => {
     const { user, password } = req.body || {};
-    const db = readDb();
+    const db = await readDb();
     const admin = findAdmin(db, user);
     if (!admin || admin.active === false || !verifyPassword(password || "", admin.passwordHash)) return res.status(401).json({ error: "Credenciais invalidas." });
     res.setHeader("Set-Cookie", sessionCookie(makeSessionFor(admin)));
     res.json({ ok: true, user: admin.user, role: admin.role });
-  });
+  }));
 
   app.delete("/api/session", (req, res) => {
     res.setHeader("Set-Cookie", sessionCookie("", 0));
@@ -548,12 +611,12 @@ function createApp() {
     res.json({ category: inferCategory(text), priority: inferPriority(text, req.body?.dueAt) });
   });
 
-  app.get("/api/settings", requirePermission("read"), (req, res) => {
-    res.json(readDb().settings);
-  });
+  app.get("/api/settings", requirePermission("read"), asyncRoute(async (req, res) => {
+    res.json((await readDb()).settings);
+  }));
 
-  app.put("/api/settings", requirePermission("settings"), (req, res) => {
-    const db = readDb();
+  app.put("/api/settings", requirePermission("settings"), asyncRoute(async (req, res) => {
+    const db = await readDb();
     const payload = req.body || {};
     db.settings.companyName = String(payload.companyName || db.settings.companyName).trim();
     db.settings.contactEmail = String(payload.contactEmail || db.settings.contactEmail).trim();
@@ -573,16 +636,16 @@ function createApp() {
       }
     }
     addAudit(db, "settings.updated", "Tema, prazos ou configuracoes alterados");
-    writeDb(db);
+    await writeDb(db);
     res.json(db.settings);
-  });
+  }));
 
-  app.get("/api/admins", requirePermission("users"), (req, res) => {
-    res.json(readDb().admins.map(({ passwordHash, ...admin }) => admin));
-  });
+  app.get("/api/admins", requirePermission("users"), asyncRoute(async (req, res) => {
+    res.json((await readDb()).admins.map(({ passwordHash, ...admin }) => admin));
+  }));
 
-  app.post("/api/admins", requirePermission("users"), (req, res) => {
-    const db = readDb();
+  app.post("/api/admins", requirePermission("users"), asyncRoute(async (req, res) => {
+    const db = await readDb();
     const user = String(req.body?.user || "").trim();
     const role = ROLES.includes(req.body?.role) ? req.body.role : "operador";
     const password = String(req.body?.password || "");
@@ -592,26 +655,26 @@ function createApp() {
     const admin = { id: nextId(db.admins), user, role, active: true, mustChangePassword: true, passwordHash: hashPassword(password), createdAt: new Date().toISOString() };
     db.admins.push(admin);
     addAudit(db, "admin.created", user);
-    writeDb(db);
+    await writeDb(db);
     const { passwordHash, ...safe } = admin;
     res.status(201).json(safe);
-  });
+  }));
 
-  app.patch("/api/admins/:id", requirePermission("users"), (req, res) => {
-    const db = readDb();
+  app.patch("/api/admins/:id", requirePermission("users"), asyncRoute(async (req, res) => {
+    const db = await readDb();
     const admin = db.admins.find((item) => item.id === Number(req.params.id));
     if (!admin) return res.status(404).json({ error: "Usuario nao encontrado." });
     if (req.body?.role && ROLES.includes(req.body.role)) admin.role = req.body.role;
     if (req.body?.active !== undefined) admin.active = Boolean(req.body.active);
     admin.updatedAt = new Date().toISOString();
     addAuditFor(db, "admin.updated", admin.user, req.admin?.user || "admin");
-    writeDb(db);
+    await writeDb(db);
     const { passwordHash, ...safe } = admin;
     res.json(safe);
-  });
+  }));
 
-  app.post("/api/me/password", requirePermission("read"), (req, res) => {
-    const db = readDb();
+  app.post("/api/me/password", requirePermission("read"), asyncRoute(async (req, res) => {
+    const db = await readDb();
     const admin = findAdmin(db, req.admin.user);
     const currentPassword = String(req.body?.currentPassword || "");
     const newPassword = String(req.body?.newPassword || "");
@@ -621,15 +684,15 @@ function createApp() {
     admin.mustChangePassword = false;
     admin.updatedAt = new Date().toISOString();
     addAuditFor(db, "admin.password", "Senha alterada pelo proprio usuario", admin.user);
-    writeDb(db);
+    await writeDb(db);
     res.json({ ok: true });
-  });
+  }));
 
-  app.post("/api/demands", async (req, res) => {
+  app.post("/api/demands", asyncRoute(async (req, res) => {
     const payload = req.body || {};
     const errors = validateDemand(payload);
     if (errors.length) return res.status(400).json({ errors });
-    const db = readDb();
+    const db = await readDb();
     const id = nextId(db.demands);
     const text = `${payload.title} ${payload.description}`;
     const priority = PRIORITIES.includes(payload.priority) ? payload.priority : inferPriority(text, payload.dueAt);
@@ -660,21 +723,21 @@ function createApp() {
     addHistory(demand, "created", "Demanda registrada.", "publico");
     db.demands.push(demand);
     addAudit(db, "demand.created", demand.protocol);
-    writeDb(db);
+    await writeDb(db);
     await notify("demand.created", demand);
     if (demand.priority === "critica") await notify("demand.critical", demand);
     res.status(201).json(demand);
-  });
+  }));
 
-  app.get("/api/public/demands/:protocol", (req, res) => {
+  app.get("/api/public/demands/:protocol", asyncRoute(async (req, res) => {
     const contact = String(req.query.contact || "").trim().toLowerCase();
-    const demand = readDb().demands.find((item) => item.protocol === req.params.protocol && item.contact.toLowerCase() === contact);
+    const demand = (await readDb()).demands.find((item) => item.protocol === req.params.protocol && item.contact.toLowerCase() === contact);
     if (!demand) return res.status(404).json({ error: "Demanda nao encontrada." });
     res.json(publicDemand(demand));
-  });
+  }));
 
-  app.get("/api/demands", requirePermission("read"), (req, res) => {
-    let demands = readDb().demands.map((item) => ({ ...item, isOverdue: isOverdue(item) }));
+  app.get("/api/demands", requirePermission("read"), asyncRoute(async (req, res) => {
+    let demands = (await readDb()).demands.map((item) => ({ ...item, isOverdue: isOverdue(item) }));
     for (const field of ["status", "category", "priority", "type", "assignee"]) {
       if (req.query[field]) demands = demands.filter((item) => item[field] === req.query[field]);
     }
@@ -683,16 +746,16 @@ function createApp() {
       demands = demands.filter((item) => [item.protocol, item.title, item.requester, item.description, item.assignee].some((value) => String(value).toLowerCase().includes(q)));
     }
     res.json(demands.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-  });
+  }));
 
-  app.get("/api/demands/:id", requirePermission("read"), (req, res) => {
-    const demand = readDb().demands.find((item) => item.id === Number(req.params.id));
+  app.get("/api/demands/:id", requirePermission("read"), asyncRoute(async (req, res) => {
+    const demand = (await readDb()).demands.find((item) => item.id === Number(req.params.id));
     if (!demand) return res.status(404).json({ error: "Demanda nao encontrada." });
     res.json({ ...demand, isOverdue: isOverdue(demand) });
-  });
+  }));
 
-  app.patch("/api/demands/:id/status", requirePermission("write"), async (req, res) => {
-    const db = readDb();
+  app.patch("/api/demands/:id/status", requirePermission("write"), asyncRoute(async (req, res) => {
+    const db = await readDb();
     const demand = db.demands.find((item) => item.id === Number(req.params.id));
     if (!demand) return res.status(404).json({ error: "Demanda nao encontrada." });
     const nextStatus = req.body?.status;
@@ -712,13 +775,13 @@ function createApp() {
     }
     addHistory(demand, "status", `${fromStatus} -> ${nextStatus}`, req.admin?.user || "admin");
     addAuditFor(db, "demand.status", `${demand.protocol}: ${nextStatus}`, req.admin?.user || "admin");
-    writeDb(db);
+    await writeDb(db);
     await notify("demand.status", demand);
     res.json(demand);
-  });
+  }));
 
-  app.patch("/api/demands/:id", requirePermission("write"), (req, res) => {
-    const db = readDb();
+  app.patch("/api/demands/:id", requirePermission("write"), asyncRoute(async (req, res) => {
+    const db = await readDb();
     const demand = db.demands.find((item) => item.id === Number(req.params.id));
     if (!demand) return res.status(404).json({ error: "Demanda nao encontrada." });
     const fields = ["title", "requester", "contact", "origin", "destination", "category", "priority", "assignee", "dueAt", "description", "proof"];
@@ -731,12 +794,12 @@ function createApp() {
       demand.dueAt = dueAtForDb(db, demand.priority, demand.category);
     }
     addAuditFor(db, "demand.updated", demand.protocol, req.admin?.user || "admin");
-    writeDb(db);
+    await writeDb(db);
     res.json({ ...demand, isOverdue: isOverdue(demand) });
-  });
+  }));
 
-  app.post("/api/demands/:id/notes", requirePermission("write"), (req, res) => {
-    const db = readDb();
+  app.post("/api/demands/:id/notes", requirePermission("write"), asyncRoute(async (req, res) => {
+    const db = await readDb();
     const demand = db.demands.find((item) => item.id === Number(req.params.id));
     if (!demand) return res.status(404).json({ error: "Demanda nao encontrada." });
     const text = String(req.body?.text || "").trim();
@@ -746,12 +809,12 @@ function createApp() {
     demand.updatedAt = note.createdAt;
     addHistory(demand, "note", note.visibility === "public" ? "Resposta publica adicionada." : "Nota interna adicionada.", req.admin?.user || "admin");
     addAuditFor(db, "demand.note", demand.protocol, req.admin?.user || "admin");
-    writeDb(db);
+    await writeDb(db);
     res.status(201).json(note);
-  });
+  }));
 
-  app.post("/api/demands/:id/attachments", requirePermission("write"), (req, res) => {
-    const db = readDb();
+  app.post("/api/demands/:id/attachments", requirePermission("write"), asyncRoute(async (req, res) => {
+    const db = await readDb();
     const demand = db.demands.find((item) => item.id === Number(req.params.id));
     if (!demand) return res.status(404).json({ error: "Demanda nao encontrada." });
     const attachment = {
@@ -767,12 +830,12 @@ function createApp() {
     demand.updatedAt = attachment.createdAt;
     addHistory(demand, "attachment", `Anexo registrado: ${attachment.name}`, req.admin?.user || "admin");
     addAuditFor(db, "demand.attachment", demand.protocol, req.admin?.user || "admin");
-    writeDb(db);
+    await writeDb(db);
     res.status(201).json(attachment);
-  });
+  }));
 
-  app.post("/api/demands/:id/files", requirePermission("write"), upload.single("file"), (req, res) => {
-    const db = readDb();
+  app.post("/api/demands/:id/files", requirePermission("write"), upload.single("file"), asyncRoute(async (req, res) => {
+    const db = await readDb();
     const demand = db.demands.find((item) => item.id === Number(req.params.id));
     if (!demand) return res.status(404).json({ error: "Demanda nao encontrada." });
     if (!req.file) return res.status(400).json({ error: "Arquivo obrigatorio." });
@@ -790,13 +853,13 @@ function createApp() {
     demand.updatedAt = attachment.createdAt;
     addHistory(demand, "attachment", `Arquivo enviado: ${attachment.name}`, req.admin?.user || "admin");
     addAuditFor(db, "demand.file", demand.protocol, req.admin?.user || "admin");
-    writeDb(db);
+    await writeDb(db);
     res.status(201).json(attachment);
-  });
+  }));
 
-  app.get("/api/dashboard", requirePermission("read"), (req, res) => res.json(dashboard(readDb())));
-  app.get("/api/reports", requirePermission("read"), (req, res) => {
-    const db = readDb();
+  app.get("/api/dashboard", requirePermission("read"), asyncRoute(async (req, res) => res.json(dashboard(await readDb()))));
+  app.get("/api/reports", requirePermission("read"), asyncRoute(async (req, res) => {
+    const db = await readDb();
     let report = reportData(db, req.query.days || 30);
     if (req.query.category || req.query.assignee) {
       const filtered = { ...db, demands: db.demands.filter((item) => {
@@ -807,18 +870,18 @@ function createApp() {
       report = reportData(filtered, req.query.days || 30);
     }
     res.json(report);
-  });
-  app.get("/api/report.pdf", requirePermission("export"), (req, res) => {
-    const db = readDb();
+  }));
+  app.get("/api/report.pdf", requirePermission("export"), asyncRoute(async (req, res) => {
+    const db = await readDb();
     const report = reportData(db, req.query.days || 30);
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Relatorio Operacional</title><style>body{font-family:Arial,sans-serif;margin:32px;color:#18211f}h1{color:#16423c}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{border:1px solid #d9e2dd;padding:14px;border-radius:8px}table{width:100%;border-collapse:collapse;margin-top:24px}td,th{border-bottom:1px solid #d9e2dd;padding:8px;text-align:left}</style></head><body><h1>Sistema de Controle de Entregas e Tarefas Operacionais</h1><p>Relatorio imprimivel. Use o navegador para salvar como PDF.</p><div class="grid"><div class="card"><strong>${report.total}</strong><br>Total</div><div class="card"><strong>${report.vencidas}</strong><br>Vencidas</div><div class="card"><strong>${report.concluidas}</strong><br>Entregues</div><div class="card"><strong>${report.tempoMedioConclusaoHoras}h</strong><br>Media conclusao</div></div><table><thead><tr><th>Protocolo</th><th>Titulo</th><th>Status</th><th>Responsavel</th><th>Prazo</th></tr></thead><tbody>${db.demands.map((d) => `<tr><td>${d.protocol}</td><td>${d.title}</td><td>${d.status}</td><td>${d.assignee || ""}</td><td>${d.dueAt}</td></tr>`).join("")}</tbody></table></body></html>`;
     res.type("html").send(html);
-  });
-  app.get("/api/audit", requirePermission("read"), (req, res) => res.json(readDb().audit));
-  app.get("/api/backup", requirePermission("export"), (req, res) => res.json(readDb()));
+  }));
+  app.get("/api/audit", requirePermission("read"), asyncRoute(async (req, res) => res.json((await readDb()).audit)));
+  app.get("/api/backup", requirePermission("export"), asyncRoute(async (req, res) => res.json(await readDb())));
 
-  app.post("/api/notifications/check-overdue", requirePermission("write"), async (req, res) => {
-    const db = readDb();
+  app.post("/api/notifications/check-overdue", requirePermission("write"), asyncRoute(async (req, res) => {
+    const db = await readDb();
     const overdue = db.demands.filter((item) => isOverdue(item) && !item.overdueNotifiedAt);
     for (const demand of overdue) {
       demand.overdueNotifiedAt = new Date().toISOString();
@@ -826,19 +889,19 @@ function createApp() {
       await notify("demand.overdue", demand);
     }
     if (overdue.length) addAuditFor(db, "notification.overdue", `${overdue.length} alerta(s) enviados`, req.admin?.user || "admin");
-    writeDb(db);
+    await writeDb(db);
     res.json({ notified: overdue.length });
-  });
+  }));
 
-  app.get("/api/export.csv", requirePermission("export"), (req, res) => {
-    const rows = readDb().demands;
+  app.get("/api/export.csv", requirePermission("export"), asyncRoute(async (req, res) => {
+    const rows = (await readDb()).demands;
     const header = ["protocol", "type", "title", "requester", "category", "priority", "status", "assignee", "dueAt"];
     const csv = [header.join(","), ...rows.map((row) => header.map((field) => `"${String(row[field] || "").replace(/"/g, '""')}"`).join(","))].join("\n");
     res.type("text/csv").send(csv);
-  });
+  }));
 
-  app.post("/api/demo/seed", requirePermission("seed"), (req, res) => {
-    const db = readDb();
+  app.post("/api/demo/seed", requirePermission("seed"), asyncRoute(async (req, res) => {
+    const db = await readDb();
     const samples = [
       ["coleta", "Coleta atrasada no fornecedor", "Fornecedor Norte", "rota", "critica", "aguardando_coleta"],
       ["tarefa", "Conferencia de volumes da rota 12", "Estoque", "estoque", "media", "em_separacao"],
@@ -875,11 +938,15 @@ function createApp() {
       return demand;
     });
     addAudit(db, "demo.seed", `${created.length} demandas demo criadas`);
-    writeDb(db);
+    await writeDb(db);
     res.status(201).json({ created: created.length, demands: created });
-  });
+  }));
 
   app.use("/api", (req, res) => res.status(404).json({ error: "Recurso nao encontrado." }));
+  app.use((error, req, res, next) => {
+    if (res.headersSent) return next(error);
+    res.status(500).json({ error: "Falha interna ao processar a solicitacao." });
+  });
   return app;
 }
 

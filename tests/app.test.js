@@ -62,6 +62,14 @@ test("classifica prioridade e categoria operacional", () => {
   assert.equal(validateDemand({ type: "entrega", title: "Entrega", requester: "Loja", contact: "ops", description: "Enviar pedido ao cliente" }).length, 0);
 });
 
+test("informa modo de persistencia no healthcheck", async () => {
+  const health = await request("/api/health");
+  assert.equal(health.response.status, 200);
+  assert.equal(health.body.storage, "json");
+  assert.equal(health.body.persistence, "filesystem");
+  assert.equal(health.body.security.sessionMaxAgeMinutes, 480);
+});
+
 test("cria demanda publica e consulta por protocolo", async () => {
   const created = await request("/api/demands", {
     method: "POST",

@@ -38,7 +38,7 @@ npm run screenshots
 - Regra de negocio real: protocolo unico, SLA por prioridade/categoria e status com transicoes controladas.
 - Operacao acompanhavel: dashboard, kanban, filtros, busca, historico, notas e auditoria.
 - Seguranca aplicada: sessao assinada, cookie `HttpOnly`, expiracao de sessao, senha com `scrypt`, permissoes por perfil, headers de seguranca, protecao contra origem cruzada e limite basico de requisicoes.
-- Persistencia flexivel: JSON local para demo/homologacao e migrations PostgreSQL para producao robusta.
+- Persistencia flexivel: JSON local para demo/homologacao e PostgreSQL ativo em producao quando `DATABASE_URL` estiver configurado.
 - Qualidade verificavel: testes automatizados, validacao de sintaxe, screenshots, backup e documentacao de deploy.
 - Experiencia profissional: layout responsivo, menu mobile, tema configuravel por cliente, CSV e relatorio imprimivel.
 
@@ -81,7 +81,7 @@ npm run screenshots
 | --- | --- |
 | Front-end | HTML, CSS, JavaScript |
 | Back-end | Node.js, Express |
-| Banco de dados | JSON local, PostgreSQL preparado |
+| Banco de dados | JSON local, PostgreSQL via `DATABASE_URL` |
 | Uploads | Multer |
 | Notificacoes | Webhook, SMTP/Nodemailer |
 | Testes | Node Test Runner, `node --check`, Playwright |
@@ -144,7 +144,7 @@ O projeto esta preparado para preview na Vercel usando `vercel.json` e `api/inde
 
 No preview serverless, o app usa arquivo temporario em `/tmp`. Isso e suficiente para demonstracao visual e navegacao de portfolio, mas nao deve ser tratado como producao definitiva.
 
-Para producao com persistencia real, use Render com disco persistente ou PostgreSQL conforme `docs/DEPLOY.md`.
+Para producao com persistencia real, use Render com disco persistente ou configure `DATABASE_URL` para ativar PostgreSQL conforme `docs/DEPLOY.md`.
 
 ## Qualidade e Testes
 
@@ -204,13 +204,15 @@ O repositorio tambem possui GitHub Actions em `.github/workflows/ci.yml`, valida
 O app funciona em dois modos:
 
 - JSON local: recomendado para desenvolvimento, demonstracao e homologacao simples.
-- PostgreSQL: recomendado para producao robusta.
+- PostgreSQL: recomendado para producao robusta. Quando `DATABASE_URL` existe, a API usa PostgreSQL automaticamente.
 
 Para aplicar migrations PostgreSQL:
 
 ```bash
 npm run db:migrate
 ```
+
+O endpoint `/api/health` informa o modo ativo em `storage` e `persistence`, facilitando a validacao pos-deploy.
 
 Para gerar backup local do JSON:
 
