@@ -2,7 +2,7 @@ services:
   - type: web
     name: controle-entregas-tarefas
     runtime: node
-    plan: free
+    plan: starter
     buildCommand: npm ci
     preDeployCommand: npm run db:migrate
     startCommand: npm start
@@ -16,7 +16,7 @@ services:
           name: controle-entregas-tarefas-db
           property: connectionString
       - key: UPLOAD_DIR
-        value: /tmp/uploads-demo
+        value: /var/data/uploads-production
       - key: SESSION_SECRET
         generateValue: true
       - key: ADMIN_USER
@@ -37,9 +37,13 @@ services:
         value: operacao@empresa.com
       - key: NOTIFICATION_EMAIL_TO
         sync: false
+    disk:
+      name: controle-operacional-uploads
+      mountPath: /var/data
+      sizeGB: 1
 
 databases:
   - name: controle-entregas-tarefas-db
     databaseName: controle_entregas_tarefas
     user: controle_entregas_tarefas
-    plan: free
+    plan: starter

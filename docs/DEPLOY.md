@@ -15,19 +15,42 @@ No ambiente serverless da Vercel, quando `DATA_FILE` nao for definido, o app usa
 
 Para uso real com dados persistentes, prefira Render com disco persistente ou PostgreSQL.
 
-## Render
+## Render Free para Demo de Portfolio
 
-O caminho recomendado para producao e usar o Blueprint `render.yaml` deste repositorio.
+O arquivo `render.yaml` esta configurado para demo online sem cartao:
+
+- Web Service `free`.
+- PostgreSQL `free`.
+- `DATABASE_URL` preenchido automaticamente.
+- Uploads em `/tmp/uploads-demo`, com armazenamento temporario.
+- Migrations em `preDeployCommand`.
+- Healthcheck em `/api/health`.
+
+Esse modo e bom para portfolio e entrevista, mas nao deve ser vendido como producao definitiva. Em instancia gratuita, o servico pode dormir quando fica sem acesso e os dados/recursos gratuitos possuem limitacoes do provedor.
+
+Passos:
 
 1. No Render, criar um novo Blueprint.
 2. Conectar o repositorio `csantos18/sistema-controle-entregas-tarefas-operacionais`.
-3. Confirmar a criacao do Web Service e do PostgreSQL declarados no `render.yaml`.
+3. Confirmar a criacao do Web Service e do PostgreSQL gratuitos.
+4. Gerar hash da senha com `npm run hash:password -- "sua-senha-forte"`.
+5. Informar `ADMIN_PASSWORD_HASH` no painel do Render.
+6. Conferir se `DATABASE_URL` foi preenchido automaticamente.
+7. Publicar o deploy.
+
+## Render Pago para Producao Real
+
+Para producao real, use como referencia o arquivo `render.production.yaml`, que troca o plano para `starter` e usa disco persistente para uploads.
+
+1. No Render, criar um novo Blueprint.
+2. Conectar o repositorio `csantos18/sistema-controle-entregas-tarefas-operacionais`.
+3. Usar as configuracoes de `render.production.yaml` ou ajustar manualmente no painel.
 4. Gerar hash da senha com `npm run hash:password -- "sua-senha-forte"`.
 5. Informar `ADMIN_PASSWORD_HASH` no painel do Render.
 6. Conferir se `DATABASE_URL` foi preenchido automaticamente pelo banco do Blueprint.
 7. Publicar o primeiro deploy.
 
-O Blueprint atual configura:
+O modo de producao real deve configurar:
 
 - Web Service Node.js.
 - PostgreSQL gerenciado.
