@@ -17,15 +17,34 @@ Para uso real com dados persistentes, prefira Render com disco persistente ou Po
 
 ## Render
 
-1. Criar novo Web Service.
-2. Apontar para este repositorio.
-3. Usar `render.yaml` ou configurar manualmente.
-4. Escolher persistencia:
-   - JSON com disco persistente: criar disco em `/var/data` e definir `DATA_FILE=/var/data/production.json`.
-   - PostgreSQL: criar banco gerenciado e definir `DATABASE_URL`.
-5. Definir `UPLOAD_DIR=/var/data/uploads-production` quando usar disco persistente para anexos.
-6. Definir `SESSION_SECRET` com valor seguro.
-7. Gerar hash da senha e configurar `ADMIN_PASSWORD_HASH`.
+O caminho recomendado para producao e usar o Blueprint `render.yaml` deste repositorio.
+
+1. No Render, criar um novo Blueprint.
+2. Conectar o repositorio `csantos18/sistema-controle-entregas-tarefas-operacionais`.
+3. Confirmar a criacao do Web Service e do PostgreSQL declarados no `render.yaml`.
+4. Gerar hash da senha com `npm run hash:password -- "sua-senha-forte"`.
+5. Informar `ADMIN_PASSWORD_HASH` no painel do Render.
+6. Conferir se `DATABASE_URL` foi preenchido automaticamente pelo banco do Blueprint.
+7. Publicar o primeiro deploy.
+
+O Blueprint atual configura:
+
+- Web Service Node.js.
+- PostgreSQL gerenciado.
+- `DATABASE_URL` vindo do banco.
+- Migrations em `preDeployCommand`.
+- Healthcheck em `/api/health`.
+- Disco persistente em `/var/data` para uploads.
+- Deploy automatico apenas depois dos checks passarem.
+
+Se configurar manualmente, use:
+
+- Build: `npm ci`
+- Pre-deploy: `npm run db:migrate`
+- Start: `npm start`
+- Healthcheck: `/api/health`
+- `DATABASE_URL`: connection string do PostgreSQL
+- `UPLOAD_DIR`: `/var/data/uploads-production`
 
 ## Dominio, HTTPS e Ambientes
 
@@ -40,7 +59,7 @@ No Render ou provedor equivalente:
 2. Aponte DNS conforme instrucoes do provedor.
 3. Ative HTTPS/TLS automatico.
 4. Mantenha variaveis e banco separados por ambiente.
-5. Use `DATA_FILE` diferente para homologacao e producao.
+5. Confirme que `/api/health` responde pelo dominio final.
 6. Nunca use a senha local `admin123` em producao.
 
 ## Gerar Hash da Senha
@@ -95,6 +114,7 @@ Em producao PostgreSQL, use backup gerenciado do provedor e retencao diaria.
 - Abrir `/api/health`.
 - Confirmar `storage=postgres` e `persistence=postgres` quando `DATABASE_URL` estiver ativo.
 - Confirmar `security.sessionSecretConfigured=true`.
+- Confirmar `security.production=true`.
 - Confirmar que o workflow `CI` passou no GitHub Actions.
 - Registrar uma demanda teste.
 - Entrar no painel.
@@ -102,5 +122,5 @@ Em producao PostgreSQL, use backup gerenciado do provedor e retencao diaria.
 - Validar dominio customizado.
 - Validar HTTPS ativo.
 - Exportar CSV.
-- Baixar backup.
 - Validar upload de comprovante.
+- Reiniciar o servico e confirmar que a demanda teste continua salva.

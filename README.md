@@ -144,7 +144,7 @@ O projeto esta preparado para preview na Vercel usando `vercel.json` e `api/inde
 
 No preview serverless, o app usa arquivo temporario em `/tmp`. Isso e suficiente para demonstracao visual e navegacao de portfolio, mas nao deve ser tratado como producao definitiva.
 
-Para producao com persistencia real, use Render com disco persistente ou configure `DATABASE_URL` para ativar PostgreSQL conforme `docs/DEPLOY.md`.
+Para producao com persistencia real, use o Blueprint `render.yaml`, que cria Web Service, PostgreSQL, healthcheck e disco para uploads. Depois valide o ambiente com `docs/CHECKLIST_PRODUCAO_REAL.md`.
 
 ## Qualidade e Testes
 
