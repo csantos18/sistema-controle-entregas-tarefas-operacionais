@@ -23,7 +23,7 @@ O arquivo `render.yaml` esta configurado para demo online sem cartao:
 - PostgreSQL `free`.
 - `DATABASE_URL` preenchido automaticamente.
 - Uploads em `/tmp/uploads-demo`, com armazenamento temporario.
-- Migrations em `preDeployCommand`.
+- Tabela de estado criada automaticamente pela aplicacao.
 - Healthcheck em `/api/health`.
 
 Esse modo e bom para portfolio e entrevista, mas nao deve ser vendido como producao definitiva. Em instancia gratuita, o servico pode dormir quando fica sem acesso e os dados/recursos gratuitos possuem limitacoes do provedor.
@@ -63,7 +63,7 @@ O modo de producao real deve configurar:
 Se configurar manualmente, use:
 
 - Build: `npm ci`
-- Pre-deploy: `npm run db:migrate`
+- Pre-deploy: `npm run db:migrate` em plano pago; no plano free, deixe vazio.
 - Start: `npm start`
 - Healthcheck: `/api/health`
 - `DATABASE_URL`: connection string do PostgreSQL
