@@ -1,4 +1,4 @@
-# Guia De Deploy
+# Guia de Deploy
 
 ## Vercel Preview
 
@@ -18,14 +18,15 @@ Para uso real com dados persistentes, prefira Render com disco persistente ou Po
 ## Render
 
 1. Criar novo Web Service.
-2. Apontar para este repositorio/pasta.
+2. Apontar para este repositorio.
 3. Usar `render.yaml` ou configurar manualmente.
 4. Criar disco persistente em `/var/data`.
 5. Definir `DATA_FILE=/var/data/production.json`.
-6. Definir `SESSION_SECRET` com valor seguro.
-7. Gerar hash da senha e configurar `ADMIN_PASSWORD_HASH`.
+6. Definir `UPLOAD_DIR=/var/data/uploads-production`.
+7. Definir `SESSION_SECRET` com valor seguro.
+8. Gerar hash da senha e configurar `ADMIN_PASSWORD_HASH`.
 
-## Dominio, HTTPS E Ambientes
+## Dominio, HTTPS e Ambientes
 
 Para uma entrega profissional, use ambientes separados:
 
@@ -34,18 +35,22 @@ Para uma entrega profissional, use ambientes separados:
 
 No Render ou provedor equivalente:
 
-1. Configure o dominio customizado.
-2. Aponte o DNS conforme instrucoes do provedor.
+1. Configure dominio customizado.
+2. Aponte DNS conforme instrucoes do provedor.
 3. Ative HTTPS/TLS automatico.
 4. Mantenha variaveis e banco separados por ambiente.
 5. Use `DATA_FILE` diferente para homologacao e producao.
 6. Nunca use a senha local `admin123` em producao.
 
-## Gerar Hash Da Senha
+## Gerar Hash da Senha
+
+Use:
 
 ```bash
-node -e "console.log(require('crypto').createHash('sha256').update('sua-senha').digest('hex'))"
+npm run hash:password -- "sua-senha-forte"
 ```
+
+O formato preferencial e `scrypt$salt$hash`. Hashes antigos em SHA-256 continuam aceitos apenas para compatibilidade e migracao.
 
 ## PostgreSQL
 
@@ -70,19 +75,22 @@ Em producao PostgreSQL, use backup gerenciado do provedor e retencao diaria.
 ## Variaveis
 
 - `PORT`: porta do servidor.
-- `DATA_FILE`: caminho do arquivo de dados.
+- `NODE_ENV`: use `production` em producao.
+- `DATA_FILE`: caminho do arquivo de dados JSON.
+- `UPLOAD_DIR`: pasta segura para comprovantes.
 - `SESSION_SECRET`: chave de assinatura da sessao.
-- `ADMIN_USER`: usuario administrador.
-- `ADMIN_PASSWORD_HASH`: hash SHA-256 da senha.
+- `SESSION_MAX_AGE_MS`: tempo de vida da sessao em milissegundos.
+- `ADMIN_USER`: usuario administrador inicial.
+- `ADMIN_PASSWORD_HASH`: hash da senha gerado pelo script.
 - `NOTIFICATION_WEBHOOK_URL`: webhook opcional.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`: envio de e-mail.
 - `NOTIFICATION_EMAIL_TO`: destinatario dos alertas.
-- `UPLOAD_DIR`: pasta segura para comprovantes.
 - `DATABASE_URL`: conexao PostgreSQL para migrations.
 
 ## Validacao Pos-Deploy
 
 - Abrir `/api/health`.
+- Confirmar `security.sessionSecretConfigured=true`.
 - Registrar uma demanda teste.
 - Entrar no painel.
 - Mover status.
@@ -90,3 +98,4 @@ Em producao PostgreSQL, use backup gerenciado do provedor e retencao diaria.
 - Validar HTTPS ativo.
 - Exportar CSV.
 - Baixar backup.
+- Validar upload de comprovante.

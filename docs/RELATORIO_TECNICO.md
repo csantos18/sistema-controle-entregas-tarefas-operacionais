@@ -24,8 +24,13 @@ O CSS usa tres faixas principais:
 ## Seguranca
 
 - Painel protegido por sessao assinada.
-- Cookie `HttpOnly`.
-- Senha comparada por hash SHA-256.
+- Cookie `HttpOnly`, `SameSite=Lax` e `Secure` em producao.
+- Sessao com expiracao configuravel.
+- Senhas novas armazenadas com `scrypt`.
+- Compatibilidade com SHA-256 legado para migracao.
+- Headers de seguranca aplicados em todas as respostas.
+- Limite basico de requisicoes por IP e rota.
+- Protecao contra origem cruzada em metodos de escrita.
 - Rotas administrativas exigem login.
 - Perfis com permissoes: admin, supervisor, operador e leitura.
 - Consulta publica exige protocolo e contato.

@@ -1,26 +1,28 @@
 # Sistema de Controle de Entregas e Tarefas Operacionais
 
-Sistema web para registrar, priorizar, acompanhar e auditar entregas, coletas, rotas e tarefas internas, com painel operacional, consulta pública, regras de SLA, permissões, relatórios, exportação e base preparada para produção.
+Sistema web para registrar, priorizar, acompanhar e auditar entregas, coletas, rotas e tarefas internas. O projeto inclui tela publica, painel operacional, API REST, regras de SLA, permissoes, relatorios, exportacao, upload de comprovantes e documentacao para deploy.
 
-## Visão Geral
+## Visao Geral
 
-O Sistema de Controle de Entregas e Tarefas Operacionais resolve um problema comum em operações logísticas e equipes internas: demandas chegam por canais soltos, prazos se perdem, responsáveis não ficam claros, o cliente não consegue consultar andamento e a gestão não tem indicadores confiáveis para agir.
+Operacoes logisticas e equipes internas costumam receber demandas por canais soltos: mensagens, ligacoes, planilhas e e-mails. Isso dificulta prazos, responsaveis, evidencias e indicadores.
 
-O solicitante registra uma entrega, coleta ou tarefa operacional, recebe um protocolo no formato `OP-AAAA-0001` e pode consultar o andamento com protocolo e contato. A equipe administrativa acompanha tudo no painel, filtra demandas, altera status, registra notas, adiciona anexos, controla SLA, exporta dados e consulta auditoria.
+Este sistema centraliza o fluxo:
 
-O documento central de produto fica em `docs/PRD.md`. Ele descreve problema, público-alvo, requisitos, regras de negócio, critérios de aceite, riscos e roadmap.
+- o solicitante registra uma entrega, coleta ou tarefa;
+- o sistema gera protocolo no formato `OP-AAAA-0001`;
+- o solicitante consulta o andamento com protocolo e contato;
+- a equipe acompanha tudo em painel administrativo;
+- gestores consultam indicadores, historico, auditoria, anexos, exportacoes e relatorios.
 
 ## Preview
 
-| Tela pública | Tablet | Mobile |
+| Tela publica | Tablet | Mobile |
 | --- | --- | --- |
-| ![Tela pública](public/screens/home-desktop.png) | ![Tablet](public/screens/home-tablet.png) | ![Mobile](public/screens/home-mobile.png) |
+| ![Tela publica](public/screens/home-desktop.png) | ![Tablet](public/screens/home-tablet.png) | ![Mobile](public/screens/home-mobile.png) |
 
-| Painel operacional | Documentação visual |
+| Painel operacional | Documentacao visual |
 | --- | --- |
-| ![Painel operacional](public/screens/admin-desktop.png) | ![Documentação visual](public/screens/docs-desktop.png) |
-
-As imagens acima mostram a experiência pública de registro/consulta, a adaptação mobile e o painel administrativo usado pela operação.
+| ![Painel operacional](public/screens/admin-desktop.png) | ![Documentacao visual](public/screens/docs-desktop.png) |
 
 Para gerar os screenshots novamente:
 
@@ -28,75 +30,60 @@ Para gerar os screenshots novamente:
 npm run screenshots
 ```
 
-## Por Que Este Projeto Se Destaca
+## Destaques
 
-- Produto completo: tela pública, painel operacional, página comercial, documentação visual, API REST, relatórios e rotas administrativas.
-- Regra de negócio real: protocolo único, SLA por prioridade/categoria, status permitidos e bloqueio de transições inválidas.
-- Operação acompanhável: dashboard com indicadores, kanban, filtros, busca livre, histórico, notas e auditoria.
-- Segurança aplicada: sessão assinada, cookie `HttpOnly`, comparação segura de senha, permissões por perfil e rotas protegidas.
-- Persistência flexível: JSON local para demo/homologação simples e estrutura PostgreSQL com migrations para produção robusta.
-- Qualidade verificável: testes automatizados, validação de sintaxe, geração de screenshots, backup e documentação de deploy.
-- Experiência profissional: layout responsivo, menu mobile, tema configurável por cliente, exportação CSV e relatório imprimível.
-- Integrações preparadas: webhook e e-mail SMTP opcionais para alertas de demanda crítica, status e vencimentos.
+- Produto completo: pagina publica, painel operacional, pagina comercial, documentacao visual e API REST.
+- Regra de negocio real: protocolo unico, SLA por prioridade/categoria e status com transicoes controladas.
+- Operacao acompanhavel: dashboard, kanban, filtros, busca, historico, notas e auditoria.
+- Seguranca aplicada: sessao assinada, cookie `HttpOnly`, expiracao de sessao, senha com `scrypt`, permissoes por perfil, headers de seguranca, protecao contra origem cruzada e limite basico de requisicoes.
+- Persistencia flexivel: JSON local para demo/homologacao e migrations PostgreSQL para producao robusta.
+- Qualidade verificavel: testes automatizados, validacao de sintaxe, screenshots, backup e documentacao de deploy.
+- Experiencia profissional: layout responsivo, menu mobile, tema configuravel por cliente, CSV e relatorio imprimivel.
 
 ## Funcionalidades
 
 ### Solicitante
 
-- Registro público de entrega, coleta ou tarefa.
-- Sugestão automática de categoria e prioridade por palavras-chave.
-- Geração de protocolo no formato `OP-AAAA-0001`.
-- Consulta pública segura por protocolo e contato.
-- Visualização de status, responsável, prazo, origem, destino e última nota pública.
-- Página comercial para apresentação do serviço.
-- Interface responsiva para desktop, tablet e celular.
+- Registro publico de entrega, coleta ou tarefa.
+- Sugestao automatica de categoria e prioridade por palavras-chave.
+- Geracao de protocolo.
+- Consulta publica segura por protocolo e contato.
+- Visualizacao de status, responsavel, prazo, origem, destino e ultima nota publica.
 
-### Operação
+### Operacao
 
-- Login administrativo protegido por sessão.
+- Login administrativo protegido por sessao.
 - Dashboard com indicadores por status, prioridade, categoria e atrasos.
 - Kanban operacional com demandas abertas.
-- Filtros por status, prioridade, categoria, tipo, responsável e busca livre.
-- Alteração de status respeitando transições permitidas.
-- Registro de notas públicas e internas.
-- Detalhe completo da demanda com histórico, anexos e comprovantes.
+- Filtros por status, prioridade, categoria, tipo, responsavel e busca livre.
+- Alteracao de status respeitando transicoes permitidas.
+- Registro de notas publicas e internas.
+- Detalhe completo da demanda com historico, anexos e comprovantes.
 - Upload de arquivos PNG, JPG, WEBP ou PDF.
-- Exportação CSV, backup JSON e relatório imprimível.
-- Tema visual configurável por cliente.
-- Seed demo para apresentações comerciais.
+- Exportacao CSV, backup JSON e relatorio imprimivel.
+- Tema visual configuravel por cliente.
+- Seed demo para apresentacoes comerciais.
 
-### Administração
+### Administracao
 
-- Perfis de acesso: `admin`, `supervisor`, `operador` e `leitura`.
-- Criação, bloqueio/desbloqueio e edição de usuários administrativos.
+- Perfis: `admin`, `supervisor`, `operador` e `leitura`.
+- Criacao, bloqueio/desbloqueio e edicao de usuarios administrativos.
 - Troca de senha.
-- Auditoria por ator e ação.
+- Auditoria por ator e acao.
 - Monitoramento de demandas vencidas.
-- Notificações opcionais por webhook e e-mail SMTP.
-
-## Decisões Técnicas
-
-- HTML, CSS e JavaScript sem framework: escolha intencional para demonstrar domínio da base web e manipulação direta do DOM.
-- Node.js + Express: API REST simples, clara e adequada ao escopo operacional.
-- Persistência em JSON: fallback local rápido para demo, testes e homologação simples.
-- PostgreSQL: caminho recomendado para produção robusta, com schema versionado em `migrations/001_init.sql`.
-- Multer: upload real de comprovantes e anexos.
-- Nodemailer e webhook: notificações externas opcionais.
-- Playwright: geração de screenshots e validação visual.
-- Render: configuração preservada em `render.yaml` para deploy com disco persistente.
-- Vercel: preview serverless preparado para demonstração de portfólio, com persistência temporária em `/tmp`.
+- Notificacoes opcionais por webhook e e-mail SMTP.
 
 ## Stack
 
-| Área | Tecnologias |
+| Area | Tecnologias |
 | --- | --- |
 | Front-end | HTML, CSS, JavaScript |
 | Back-end | Node.js, Express |
 | Banco de dados | JSON local, PostgreSQL preparado |
 | Uploads | Multer |
-| Notificações | Webhook, SMTP/Nodemailer |
-| Testes e qualidade | Node Test Runner, `node --check`, Playwright |
-| Deploy | Render, Vercel Preview, disco persistente, variáveis de ambiente |
+| Notificacoes | Webhook, SMTP/Nodemailer |
+| Testes | Node Test Runner, `node --check`, Playwright |
+| Deploy | Render, Vercel Preview, disco persistente, variaveis de ambiente |
 
 ## Como Rodar Localmente
 
@@ -111,33 +98,28 @@ Depois acesse:
 http://localhost:3000
 ```
 
-Painel administrativo:
-
-```text
-http://localhost:3000
-```
-
-Credenciais locais de demonstração:
+Credenciais locais de demonstracao:
 
 ```text
 usuario: admin
 senha: admin123
 ```
 
-Em produção, a senha local não deve ser usada. Configure `ADMIN_PASSWORD_HASH` com uma senha segura.
+Em producao, nao use a senha local. Configure `ADMIN_PASSWORD_HASH` com hash forte.
 
-## Variáveis de Ambiente
+## Variaveis de Ambiente
 
 Crie um `.env` local com base em `.env.example`.
 
-Variáveis principais:
+Variaveis principais:
 
 ```text
 PORT=3000
 DATA_FILE=data/database.json
 SESSION_SECRET=seu-segredo-de-sessao
+SESSION_MAX_AGE_MS=28800000
 ADMIN_USER=admin
-ADMIN_PASSWORD_HASH=hash-sha256-da-senha
+ADMIN_PASSWORD_HASH=hash-scrypt-da-senha
 UPLOAD_DIR=uploads
 DATABASE_URL=postgresql://...
 NOTIFICATION_WEBHOOK_URL=https://exemplo.com/webhook
@@ -151,20 +133,18 @@ NOTIFICATION_EMAIL_TO=operacao@empresa.com
 Para gerar o hash da senha:
 
 ```bash
-node -e "console.log(require('crypto').createHash('sha256').update('sua-senha').digest('hex'))"
+npm run hash:password -- "sua-senha-forte"
 ```
 
 ## Preview Online
 
-O projeto está preparado para preview na Vercel usando `vercel.json` e `api/index.js`.
+O projeto esta preparado para preview na Vercel usando `vercel.json` e `api/index.js`.
 
-No preview serverless, o app usa arquivo temporário em `/tmp`. Isso é suficiente para demonstração visual e navegação do portfólio, mas não deve ser tratado como produção definitiva porque os dados podem ser reiniciados pela plataforma.
+No preview serverless, o app usa arquivo temporario em `/tmp`. Isso e suficiente para demonstracao visual e navegacao de portfolio, mas nao deve ser tratado como producao definitiva.
 
-Para produção com persistência real, use Render com disco persistente ou PostgreSQL conforme `docs/DEPLOY.md`.
+Para producao com persistencia real, use Render com disco persistente ou PostgreSQL conforme `docs/DEPLOY.md`.
 
 ## Qualidade e Testes
-
-O projeto inclui uma rotina de validação para reduzir regressões em API, regras de negócio, autenticação, permissões, relatórios e layout.
 
 ```bash
 npm test
@@ -175,48 +155,51 @@ npm run backup
 
 Os testes cobrem:
 
-- Classificação automática de categoria e prioridade.
-- Validação de campos obrigatórios.
-- Abertura pública e documentação visual.
-- Criação de demanda e geração de protocolo.
-- Consulta pública por protocolo e contato.
-- Login administrativo e proteção de rotas.
-- Alteração de status e bloqueio de transição inválida.
-- Notas, relatórios, exportação, backup e auditoria.
+- classificacao automatica de categoria e prioridade;
+- validacao de campos obrigatorios;
+- criacao de demanda e geracao de protocolo;
+- consulta publica por protocolo e contato;
+- login administrativo e protecao de rotas;
+- headers de seguranca e bloqueio de origem cruzada;
+- alteracao de status e bloqueio de transicao invalida;
+- notas, relatorios, exportacao, backup, upload e auditoria.
 
-## Segurança
+## Seguranca
 
-- Painel protegido por sessão administrativa assinada.
-- Cookie administrativo `HttpOnly` e `SameSite=Lax`.
-- Senha comparada por hash SHA-256.
-- Comparação de assinatura com `timingSafeEqual`.
-- Permissões por perfil para leitura, escrita, configuração, usuários, exportação e seed demo.
-- Consulta pública exige protocolo e contato.
-- Notas internas não aparecem na consulta pública.
-- Upload limitado a PNG, JPG, JPEG, WEBP ou PDF.
-- Arquivos enviados ficam protegidos por rota que exige permissão de leitura.
-- Variáveis sensíveis ficam fora do Git.
+- Painel protegido por sessao administrativa assinada.
+- Cookie `HttpOnly`, `SameSite=Lax` e `Secure` em producao.
+- Expiracao configuravel de sessao.
+- Senhas novas armazenadas com `scrypt`.
+- Compatibilidade com hashes legados SHA-256 para migracao.
+- Comparacao segura com `timingSafeEqual`.
+- Permissoes por perfil.
+- Headers de seguranca: CSP, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` e `Permissions-Policy`.
+- Protecao basica contra origem cruzada em metodos de escrita.
+- Rate limit simples por IP e rota.
+- Consulta publica exige protocolo e contato.
+- Notas internas nao aparecem na consulta publica.
+- Upload limitado por extensao e tamanho.
+- Arquivos enviados ficam protegidos por rota administrativa.
+- Variaveis sensiveis ficam fora do Git.
 
-## Regras de Negócio
+## Regras de Negocio
 
-- Toda demanda precisa ter tipo, título, solicitante, contato e descrição.
-- Tipos válidos: `entrega`, `coleta`, `tarefa`.
-- Categorias válidas: `entrega`, `coleta`, `rota`, `estoque`, `manutencao`, `administrativo`.
-- Prioridades válidas: `baixa`, `media`, `alta`, `critica`.
-- O sistema sugere categoria e prioridade por palavras-chave.
+- Toda demanda precisa ter tipo, titulo, solicitante, contato e descricao.
+- Tipos validos: `entrega`, `coleta`, `tarefa`.
+- Categorias validas: `entrega`, `coleta`, `rota`, `estoque`, `manutencao`, `administrativo`.
+- Prioridades validas: `baixa`, `media`, `alta`, `critica`.
 - Demandas nascem com status `novo`.
-- Status válidos: `novo`, `em_separacao`, `aguardando_coleta`, `em_rota`, `entregue`, `falha_entrega`, `reentrega`, `cancelado`.
-- Status finais `entregue` e `cancelado` não aceitam nova transição.
+- Status finais `entregue` e `cancelado` nao aceitam nova transicao.
 - Demandas fora do prazo ficam marcadas como vencidas.
-- Para marcar como `entregue`, o operador precisa informar observação final e comprovante.
-- A consulta pública retorna apenas dados seguros da demanda.
+- Para marcar como `entregue`, o operador precisa informar observacao final e comprovante.
+- A consulta publica retorna apenas dados seguros da demanda.
 
-## Persistência
+## Persistencia
 
 O app funciona em dois modos:
 
-- JSON local: recomendado para desenvolvimento, demonstração e homologação simples.
-- PostgreSQL: recomendado para produção robusta.
+- JSON local: recomendado para desenvolvimento, demonstracao e homologacao simples.
+- PostgreSQL: recomendado para producao robusta.
 
 Para aplicar migrations PostgreSQL:
 
@@ -232,7 +215,7 @@ npm run backup
 
 ## Rotas Principais
 
-### Públicas
+### Publicas
 
 ```text
 GET  /
@@ -265,55 +248,26 @@ POST   /api/demands/:id/files
 GET    /api/dashboard
 GET    /api/reports
 GET    /api/report.pdf
-GET    /api/audit
 GET    /api/export.csv
 GET    /api/backup
+GET    /api/audit
 POST   /api/demo/seed
-POST   /api/notifications/check-overdue
 ```
 
-## Estrutura
+## Documentacao
 
-```text
-.
-├── server.js                 # API, segurança, regras, persistência e rotas
-├── package.json              # Scripts e dependências
-├── render.yaml               # Deploy Render
-├── public/
-│   ├── index.html            # Experiência pública e painel
-│   ├── app.js                # Interações da aplicação
-│   ├── styles.css            # Layout responsivo
-│   └── screens/              # Screenshots do README
-├── data/                     # Base JSON local
-├── migrations/               # Schema PostgreSQL
-├── scripts/                  # Backup, migrations e screenshots
-├── tests/                    # Testes automatizados
-└── docs/                     # Documentação de produto, deploy e operação
-```
-
-## Documentos do Projeto
-
-- [PRD do produto](docs/PRD.md)
-- [Relatório técnico](docs/RELATORIO_TECNICO.md)
-- [Guia de deploy](docs/DEPLOY.md)
-- [Operação do cliente](docs/OPERACAO_CLIENTE.md)
-- [Roteiro de apresentação](docs/ROTEIRO_APRESENTACAO.md)
-- [Proposta comercial](docs/PROPOSTA_COMERCIAL.md)
-- [Checklist de implantação](docs/CHECKLIST_IMPLANTACAO.md)
-- [Termos mínimos](docs/TERMOS_MINIMOS.md)
-- [Política de privacidade/LGPD](docs/POLITICA_PRIVACIDADE_LGPD.md)
-- [Evolução para produção robusta](docs/EVOLUCAO_PRODUCAO.md)
-
-## Aprendizados Demonstrados
-
-- Modelagem de fluxo completo para operação logística.
-- Construção de API REST com validações de domínio.
-- Controle de status, SLA, permissões e auditoria.
-- Proteção de painel administrativo e consulta pública segura.
-- Persistência local com caminho de evolução para PostgreSQL.
-- Geração de relatórios, exportação e backup.
-- Testes automatizados e documentação voltada para portfólio.
+- `docs/PRD.md`: produto, publico-alvo, requisitos e roadmap.
+- `docs/DEPLOY.md`: deploy em Vercel/Render e variaveis.
+- `docs/OPERACAO_CLIENTE.md`: operacao diaria.
+- `docs/RELATORIO_TECNICO.md`: detalhes tecnicos.
+- `docs/PROPOSTA_COMERCIAL.md`: posicionamento comercial.
+- `docs/POLITICA_PRIVACIDADE_LGPD.md`: privacidade e LGPD.
+- `docs/CHECKLIST_IMPLANTACAO.md`: checklist de implantacao.
 
 ## Status
 
-Projeto autoral pronto para deploy, com README, screenshots, documentação técnica, testes, regras de negócio, segurança básica, rotas REST e configuração de produção preservada para Render.
+Projeto pronto para portfolio profissional e demonstracao controlada. Para producao real, use variaveis fortes, HTTPS, armazenamento persistente e valide o checklist de implantacao.
+
+## Autor
+
+Carlos Eduardo Neves dos Santos

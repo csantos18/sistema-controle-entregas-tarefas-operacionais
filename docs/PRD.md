@@ -96,7 +96,8 @@ Equipes operacionais costumam controlar demandas por WhatsApp, planilhas, ligaco
 - Menu hamburguer no mobile.
 - Persistencia local simples e auditavel em JSON para desenvolvimento/homologacao, com migrations PostgreSQL para producao robusta.
 - Login administrativo com cookie `HttpOnly`.
-- Senha administrativa com hash SHA-256 em producao.
+- Senha administrativa com hash `scrypt` em producao, mantendo compatibilidade temporaria com hashes legados.
+- Headers de seguranca, expiracao de sessao, limite basico de requisicoes e protecao contra origem cruzada em metodos de escrita.
 - Validacao de entradas no servidor.
 - Estado local facil de portar para banco relacional em evolucao.
 - Testes automatizados com `node:test`.

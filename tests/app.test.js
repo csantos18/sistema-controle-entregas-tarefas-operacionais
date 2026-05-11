@@ -104,6 +104,24 @@ test("protege painel e permite fluxo administrativo", async () => {
   assert.ok(dashboard.body.total >= 1);
 });
 
+test("aplica headers de seguranca e bloqueia origem cruzada em escrita", async () => {
+  const health = await fetch(`${baseUrl}/api/health`);
+  assert.equal(health.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(health.headers.get("x-frame-options"), "DENY");
+  assert.match(health.headers.get("content-security-policy"), /default-src 'self'/);
+
+  const blocked = await fetch(`${baseUrl}/api/demo/seed`, {
+    method: "POST",
+    headers: {
+      Cookie: cookie,
+      Origin: "https://malicioso.example",
+      "Content-Type": "application/json",
+    },
+    body: "{}",
+  });
+  assert.equal(blocked.status, 403);
+});
+
 test("bloqueia transicao invalida", async () => {
   const list = await request("/api/demands");
   const first = list.body[0];

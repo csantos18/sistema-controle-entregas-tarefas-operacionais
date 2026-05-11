@@ -13,7 +13,9 @@ This portfolio project uses environment variables for secrets and must not store
 ## Operational Rules
 
 - Keep `.env`, production data, uploads, backups and coverage out of Git.
-- Use strong values for `ADMIN_PASSWORD`, `SESSION_SECRET`, SMTP and webhook credentials.
+- Use strong values for `ADMIN_PASSWORD_HASH`, `SESSION_SECRET`, SMTP and webhook credentials.
+- Generate password hashes with `npm run hash:password -- "sua-senha-forte"`.
+- Keep `NODE_ENV=production` enabled in production so secure cookie flags are applied.
 - Validate upload limits and file types before production use.
 - Run `npm audit` before production changes.
 

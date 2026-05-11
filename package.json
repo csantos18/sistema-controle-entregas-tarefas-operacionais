@@ -1,6 +1,6 @@
 {
   "name": "controle-entregas-tarefas",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Sistema de Controle de Entregas e Tarefas Operacionais com painel, API, regras de prazo, LGPD e documentacao de producao.",
   "main": "server.js",
   "type": "commonjs",
@@ -10,6 +10,7 @@
     "check": "node --check server.js && node --test tests/*.test.js",
     "test": "node --test tests/*.test.js",
     "screenshots": "node scripts/generate-screenshots.js",
+    "hash:password": "node scripts/hash-password.js",
     "db:migrate": "node scripts/migrate-postgres.js",
     "backup": "node scripts/backup-json.js"
   },

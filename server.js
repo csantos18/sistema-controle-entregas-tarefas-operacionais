@@ -13,6 +13,7 @@ const DEFAULT_UPLOAD_DIR = IS_SERVERLESS_PREVIEW ? path.join("/tmp", "controle-e
 const DATA_FILE = path.resolve(process.env.DATA_FILE || DEFAULT_DATA_FILE);
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || DEFAULT_UPLOAD_DIR);
 const SESSION_SECRET = process.env.SESSION_SECRET || "dev-secret-change-me";
+const SESSION_MAX_AGE_MS = Number(process.env.SESSION_MAX_AGE_MS || 8 * 60 * 60 * 1000);
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || (IS_PRODUCTION ? "" : sha256("admin123"));
 const NOTIFICATION_WEBHOOK_URL = process.env.NOTIFICATION_WEBHOOK_URL || "";
@@ -76,6 +77,30 @@ function sha256(value) {
   return crypto.createHash("sha256").update(String(value)).digest("hex");
 }
 
+function safeEqualString(a, b) {
+  const left = Buffer.from(String(a || ""));
+  const right = Buffer.from(String(b || ""));
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
+
+function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
+  const derived = crypto.scryptSync(String(password), salt, 64).toString("hex");
+  return `scrypt$${salt}$${derived}`;
+}
+
+function verifyPassword(password, storedHash) {
+  const hash = String(storedHash || "");
+  if (hash.startsWith("scrypt$")) {
+    const [, salt, derived] = hash.split("$");
+    if (!salt || !derived) return false;
+    return safeEqualString(hashPassword(password, salt), hash);
+  }
+
+  // Compatibilidade com bancos e variaveis antigas em SHA-256.
+  return safeEqualString(sha256(password || ""), hash);
+}
+
 function sign(value) {
   return crypto.createHmac("sha256", SESSION_SECRET).update(value).digest("hex");
 }
@@ -88,13 +113,15 @@ function parseCookies(req) {
 }
 
 function makeSession() {
-  const payload = JSON.stringify({ user: ADMIN_USER, role: "admin", issuedAt: Date.now() });
+  const now = Date.now();
+  const payload = JSON.stringify({ user: ADMIN_USER, role: "admin", issuedAt: now, expiresAt: now + SESSION_MAX_AGE_MS });
   const encoded = Buffer.from(payload).toString("base64url");
   return `${encoded}.${sign(encoded)}`;
 }
 
 function makeSessionFor(admin) {
-  const payload = JSON.stringify({ user: admin.user, role: admin.role, issuedAt: Date.now() });
+  const now = Date.now();
+  const payload = JSON.stringify({ user: admin.user, role: admin.role, issuedAt: now, expiresAt: now + SESSION_MAX_AGE_MS });
   const encoded = Buffer.from(payload).toString("base64url");
   return `${encoded}.${sign(encoded)}`;
 }
@@ -102,7 +129,7 @@ function makeSessionFor(admin) {
 function sessionCookie(value, maxAge = null) {
   const attrs = [`ops_session=${encodeURIComponent(value)}`, "HttpOnly", "SameSite=Lax", "Path=/"];
   if (IS_PRODUCTION) attrs.push("Secure");
-  if (maxAge !== null) attrs.push(`Max-Age=${maxAge}`);
+  attrs.push(`Max-Age=${maxAge !== null ? maxAge : Math.floor(SESSION_MAX_AGE_MS / 1000)}`);
   return attrs.join("; ");
 }
 
@@ -114,7 +141,9 @@ function currentAdmin(req) {
   if (!signature || signature.length !== expected.length) return null;
   if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
   try {
-    return JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
+    const admin = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
+    if (admin.expiresAt && Date.now() > Number(admin.expiresAt)) return null;
+    return admin;
   } catch {
     return null;
   }
@@ -136,10 +165,60 @@ function requireAdmin(req, res, next) {
 
 function requirePermission(permission) {
   return (req, res, next) => {
-    const admin = currentAdmin(req);
-    if (!admin) return res.status(401).json({ error: "Acesso administrativo necessario." });
-    if (!ROLE_PERMISSIONS[admin.role]?.includes(permission)) return res.status(403).json({ error: "Permissao insuficiente." });
-    req.admin = admin;
+    const sessionAdmin = currentAdmin(req);
+    if (!sessionAdmin) return res.status(401).json({ error: "Acesso administrativo necessario." });
+    const dbAdmin = findAdmin(readDb(), sessionAdmin.user);
+    if (!dbAdmin || dbAdmin.active === false) return res.status(401).json({ error: "Sessao administrativa invalida ou usuario bloqueado." });
+    if (!ROLE_PERMISSIONS[dbAdmin.role]?.includes(permission)) return res.status(403).json({ error: "Permissao insuficiente." });
+    req.admin = { user: dbAdmin.user, role: dbAdmin.role, id: dbAdmin.id };
+    next();
+  };
+}
+
+function securityHeaders(req, res, next) {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Content-Security-Policy", [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    "img-src 'self' data: blob:",
+    "style-src 'self' 'unsafe-inline'",
+    "script-src 'self'",
+    "connect-src 'self'",
+  ].join("; "));
+  next();
+}
+
+function sameOriginGuard(req, res, next) {
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return next();
+  const origin = req.get("origin");
+  if (!origin) return next();
+  const protocol = req.get("x-forwarded-proto") || req.protocol;
+  const expected = `${protocol}://${req.get("host")}`;
+  if (origin !== expected) return res.status(403).json({ error: "Origem da requisicao nao autorizada." });
+  next();
+}
+
+function createRateLimiter({ windowMs = 60_000, max = 120 } = {}) {
+  const hits = new Map();
+  return (req, res, next) => {
+    const key = `${req.ip}:${req.path}`;
+    const now = Date.now();
+    const current = hits.get(key) || { count: 0, resetAt: now + windowMs };
+    if (now > current.resetAt) {
+      current.count = 0;
+      current.resetAt = now + windowMs;
+    }
+    current.count += 1;
+    hits.set(key, current);
+    res.setHeader("RateLimit-Limit", String(max));
+    res.setHeader("RateLimit-Remaining", String(Math.max(0, max - current.count)));
+    res.setHeader("RateLimit-Reset", String(Math.ceil(current.resetAt / 1000)));
+    if (current.count > max) return res.status(429).json({ error: "Muitas requisicoes. Tente novamente em instantes." });
     next();
   };
 }
@@ -426,6 +505,11 @@ async function notifyEmail(event, demand) {
 
 function createApp() {
   const app = express();
+  app.disable("x-powered-by");
+  app.use(securityHeaders);
+  app.use(createRateLimiter({ windowMs: 60_000, max: 180 }));
+  app.use("/api/session", createRateLimiter({ windowMs: 15 * 60_000, max: 20 }));
+  app.use(sameOriginGuard);
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true }));
   app.use(express.static(path.join(__dirname, "public")));
@@ -438,13 +522,18 @@ function createApp() {
     mode: IS_SERVERLESS_PREVIEW ? "serverless-preview" : "node",
     persistence: IS_SERVERLESS_PREVIEW ? "temporary" : "filesystem",
     adminConfigured: Boolean(ADMIN_PASSWORD_HASH),
+    security: {
+      production: IS_PRODUCTION,
+      sessionSecretConfigured: SESSION_SECRET !== "dev-secret-change-me",
+      sessionMaxAgeMinutes: Math.round(SESSION_MAX_AGE_MS / 60000),
+    },
   }));
 
   app.post("/api/session", (req, res) => {
     const { user, password } = req.body || {};
     const db = readDb();
     const admin = findAdmin(db, user);
-    if (!admin || admin.active === false || sha256(password || "") !== admin.passwordHash) return res.status(401).json({ error: "Credenciais invalidas." });
+    if (!admin || admin.active === false || !verifyPassword(password || "", admin.passwordHash)) return res.status(401).json({ error: "Credenciais invalidas." });
     res.setHeader("Set-Cookie", sessionCookie(makeSessionFor(admin)));
     res.json({ ok: true, user: admin.user, role: admin.role });
   });
@@ -500,7 +589,7 @@ function createApp() {
     if (!/^[a-zA-Z0-9_.-]{3,40}$/.test(user)) return res.status(400).json({ error: "Usuario invalido." });
     if (password.length < 8) return res.status(400).json({ error: "Senha deve ter pelo menos 8 caracteres." });
     if (findAdmin(db, user)) return res.status(409).json({ error: "Usuario ja existe." });
-    const admin = { id: nextId(db.admins), user, role, active: true, mustChangePassword: true, passwordHash: sha256(password), createdAt: new Date().toISOString() };
+    const admin = { id: nextId(db.admins), user, role, active: true, mustChangePassword: true, passwordHash: hashPassword(password), createdAt: new Date().toISOString() };
     db.admins.push(admin);
     addAudit(db, "admin.created", user);
     writeDb(db);
@@ -526,9 +615,9 @@ function createApp() {
     const admin = findAdmin(db, req.admin.user);
     const currentPassword = String(req.body?.currentPassword || "");
     const newPassword = String(req.body?.newPassword || "");
-    if (!admin || sha256(currentPassword) !== admin.passwordHash) return res.status(401).json({ error: "Senha atual invalida." });
+    if (!admin || !verifyPassword(currentPassword, admin.passwordHash)) return res.status(401).json({ error: "Senha atual invalida." });
     if (newPassword.length < 8) return res.status(400).json({ error: "Nova senha deve ter pelo menos 8 caracteres." });
-    admin.passwordHash = sha256(newPassword);
+    admin.passwordHash = hashPassword(newPassword);
     admin.mustChangePassword = false;
     admin.updatedAt = new Date().toISOString();
     addAuditFor(db, "admin.password", "Senha alterada pelo proprio usuario", admin.user);
@@ -806,6 +895,8 @@ module.exports = {
   inferCategory,
   validateDemand,
   sha256,
+  hashPassword,
+  verifyPassword,
   STATUSES,
   TYPES,
   CATEGORIES,
