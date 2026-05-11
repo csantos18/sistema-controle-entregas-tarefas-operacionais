@@ -38,6 +38,24 @@ async function request(pathname, options = {}) {
   return { response, body };
 }
 
+async function createTestDemand(overrides = {}) {
+  const created = await request("/api/demands", {
+    method: "POST",
+    body: JSON.stringify({
+      type: "entrega",
+      title: `Demanda teste ${Date.now()}`,
+      requester: "Teste Automatizado",
+      contact: `teste-${Date.now()}@empresa.com`,
+      origin: "Origem teste",
+      destination: "Destino teste",
+      description: "Demanda criada para teste automatizado de fluxo operacional",
+      ...overrides,
+    }),
+  });
+  assert.equal(created.response.status, 201);
+  return created.body;
+}
+
 test("classifica prioridade e categoria operacional", () => {
   assert.equal(inferPriority("rota parada com cliente aguardando"), "critica");
   assert.equal(inferCategory("coleta no fornecedor hoje"), "coleta");
@@ -78,9 +96,7 @@ test("protege painel e permite fluxo administrativo", async () => {
   assert.equal(login.response.status, 200);
   cookie = login.response.headers.get("set-cookie").split(";")[0];
 
-  const list = await request("/api/demands");
-  assert.equal(list.response.status, 200);
-  const first = list.body[0];
+  const first = await createTestDemand({ title: "Fluxo administrativo controlado" });
 
   const status = await request(`/api/demands/${first.id}/status`, {
     method: "PATCH",
@@ -123,8 +139,7 @@ test("aplica headers de seguranca e bloqueia origem cruzada em escrita", async (
 });
 
 test("bloqueia transicao invalida", async () => {
-  const list = await request("/api/demands");
-  const first = list.body[0];
+  const first = await createTestDemand({ title: "Transicao invalida controlada" });
   const invalid = await request(`/api/demands/${first.id}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status: "entregue" }),
