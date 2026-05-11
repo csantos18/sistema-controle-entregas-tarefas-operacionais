@@ -91,6 +91,7 @@ Em producao PostgreSQL, use backup gerenciado do provedor e retencao diaria.
 
 - Abrir `/api/health`.
 - Confirmar `security.sessionSecretConfigured=true`.
+- Confirmar que o workflow `CI` passou no GitHub Actions.
 - Registrar uma demanda teste.
 - Entrar no painel.
 - Mover status.

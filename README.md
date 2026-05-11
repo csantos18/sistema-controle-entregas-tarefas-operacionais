@@ -1,5 +1,7 @@
 # Sistema de Controle de Entregas e Tarefas Operacionais
 
+[![CI](https://github.com/csantos18/sistema-controle-entregas-tarefas-operacionais/actions/workflows/ci.yml/badge.svg)](https://github.com/csantos18/sistema-controle-entregas-tarefas-operacionais/actions/workflows/ci.yml)
+
 Sistema web para registrar, priorizar, acompanhar e auditar entregas, coletas, rotas e tarefas internas. O projeto inclui tela publica, painel operacional, API REST, regras de SLA, permissoes, relatorios, exportacao, upload de comprovantes e documentacao para deploy.
 
 ## Visao Geral
@@ -151,6 +153,7 @@ npm test
 npm run check
 npm run screenshots
 npm run backup
+npm audit --omit=dev
 ```
 
 Os testes cobrem:
@@ -163,6 +166,8 @@ Os testes cobrem:
 - headers de seguranca e bloqueio de origem cruzada;
 - alteracao de status e bloqueio de transicao invalida;
 - notas, relatorios, exportacao, backup, upload e auditoria.
+
+O repositorio tambem possui GitHub Actions em `.github/workflows/ci.yml`, validando automaticamente `npm ci`, `npm run check` e `npm audit --omit=dev` em Node.js 20 e 22.
 
 ## Seguranca
 
